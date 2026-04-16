@@ -7,12 +7,10 @@
 
 class CommandParser {
 private:
-    // Рекурсивный парсер значений (понимает 1, "str", [1,2], {"a":1})
     static Object parseValue(const std::string& s, size_t& pos) {
         while (pos < s.size() && std::isspace(s[pos])) pos++;
         if (pos >= s.size()) return Object();
 
-        // Парсинг Списка [v1, v2]
         if (s[pos] == '[') {
             pos++; auto l = std::make_unique<ObjectList>();
             while (pos < s.size() && s[pos] != ']') {
@@ -23,7 +21,6 @@ private:
             return Object(std::move(l));
         }
 
-        // Парсинг Мапы {"k": v}
         if (s[pos] == '{') {
             pos++; auto m = std::make_unique<ObjectMap>();
             while (pos < s.size() && s[pos] != '}') {
@@ -43,7 +40,6 @@ private:
             return Object(std::move(m));
         }
 
-        // Парсинг Строки в кавычках "text"
         if (s[pos] == '"') {
             pos++; size_t start = pos;
             while (pos < s.size() && s[pos] != '"') pos++;
@@ -52,7 +48,6 @@ private:
             return Object(v);
         }
 
-        // Парсинг Числа или простого слова
         size_t start = pos;
         while (pos < s.size() && !std::isspace(s[pos]) && s[pos] != ',' && s[pos] != ']' && s[pos] != '}' && s[pos] != ':') pos++;
         std::string part = s.substr(start, pos - start);
@@ -79,7 +74,6 @@ public:
         bool in_quotes = false;
         int brace_level = 0;
 
-        // Умное разбиение на токены (не режет внутри "" и [])
         for (char c : input) {
             if (c == '"') in_quotes = !in_quotes;
             if (!in_quotes) {
@@ -99,7 +93,6 @@ public:
         std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::toupper);
 
         try {
-            // SET key value [EX seconds]
             if (cmd == "SET" && tokens.size() >= 3) {
                 std::optional<int> ttl;
                 if (tokens.size() >= 5 && (tokens[3] == "EX" || tokens[3] == "ex")) ttl = std::stoi(tokens[4]);
@@ -108,24 +101,20 @@ public:
                 return "OK";
             }
 
-            // GET key
             if (cmd == "GET" && tokens.size() >= 2) return store.get_as_string(tokens[1]);
 
-            // LPUSH key value
             if (cmd == "LPUSH" && tokens.size() >= 3) {
                 size_t p = 0;
                 store.lpush(tokens[1], parseValue(tokens[2], p));
                 return "OK";
             }
 
-            // HSET key field value
             if (cmd == "HSET" && tokens.size() >= 4) {
                 size_t p = 0;
                 store.hset(tokens[1], tokens[2], parseValue(tokens[3], p));
                 return "OK";
             }
 
-            // BOND key formula
             if (cmd == "BOND" && tokens.size() >= 3) {
                 store.bond(tokens[1], sanitize(tokens[2]));
                 return "OK";

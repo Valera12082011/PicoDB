@@ -21,8 +21,6 @@ private:
     std::unordered_map<std::string, std::vector<std::string>> subscribers;
     mutable std::shared_mutex mtx;
 
-    // --- Внутренняя логика BOND (Реактивные вычисления) ---
-
     double evaluate(const std::string& formula) {
         std::string proc = formula;
         std::regex key_rx("\\b[a-zA-Z_][a-zA-Z0-9_]*\\b");
@@ -60,14 +58,10 @@ private:
     }
 
 public:
-    // --- Публичный API ---
-
     void set(const std::string& key, Object val, std::optional<int> ttl = std::nullopt) {
         std::unique_lock lock(mtx);
         set_internal(key, std::move(val), ttl, 0);
     }
-
-    // Добавить в начало списка (LPUSH)
     void lpush(const std::string& key, Object val) {
         std::unique_lock lock(mtx);
         auto& entry = db[key];
@@ -79,7 +73,6 @@ public:
         }
     }
 
-    // Установить поле в мапе (HSET)
     void hset(const std::string& key, const std::string& field, Object val) {
         std::unique_lock lock(mtx);
         auto& entry = db[key];
@@ -103,7 +96,6 @@ public:
         set_internal(target, Object(evaluate(formula)), std::nullopt, 0);
     }
 
-    // Сериализация объекта в строку JSON-like (для вывода)
     std::string serialize_to_string(const Object& obj) const {
         return std::visit([this](auto&& arg) -> std::string {
             using T = std::decay_t<decltype(arg)>;
@@ -148,7 +140,6 @@ public:
         return ks;
     }
 
-    // Сохранение и загрузка через Serializer + Zstd (без изменений)
     bool save_to_file(const std::string& path) {
         std::shared_lock lock(mtx);
         std::stringstream ss(std::ios::binary | std::ios::out);
