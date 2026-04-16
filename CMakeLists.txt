@@ -1,21 +1,20 @@
 cmake_minimum_required(VERSION 3.20)
 project(Pico)
 
-# Исправляем проблему со старыми зависимостями
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FetchContent)
 
-# httplib
+find_package(Threads REQUIRED)
+
 FetchContent_Declare(
         httplib
         GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
         GIT_TAG v0.14.3
 )
 
-# zstd
 FetchContent_Declare(
         zstd
         GIT_REPOSITORY https://github.com/facebook/zstd.git
@@ -28,21 +27,28 @@ set(ZSTD_BUILD_TESTS OFF CACHE INTERNAL "")
 
 FetchContent_MakeAvailable(httplib zstd)
 
-# Создаем бинарник
-add_executable(Pico main.cpp)
+add_executable(Pico
+        main.cpp
+        include/Types.hpp
+        include/Storage.hpp
 
-# Указываем, где лежат наши хидеры
+)
+
 target_include_directories(Pico PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${httplib_SOURCE_DIR}
         ${zstd_SOURCE_DIR}/lib
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
+# 2. Линкуем всё вместе
 target_link_libraries(Pico PRIVATE
         httplib::httplib
         libzstd_static
+        Threads::Threads     # Добавляем потоки
 )
 
 if(WIN32)
+    # Линкуем сокеты для Windows
     target_link_libraries(Pico PRIVATE ws2_32)
 endif()
